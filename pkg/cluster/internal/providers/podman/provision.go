@@ -108,7 +108,12 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 				if err != nil {
 					return err
 				}
-				return createContainerWithWaitUntilSystemdReachesMultiUserSystem(name, args)
+				err = createContainerWithWaitUntilSystemdReachesMultiUserSystem(name, args)
+				if err == nil {
+					err = connectExtraNetworks(node, name)
+				}
+				return err
+
 			})
 		case config.WorkerRole:
 			createContainerFuncs = append(createContainerFuncs, func() error {
@@ -116,13 +121,45 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 				if err != nil {
 					return err
 				}
-				return createContainerWithWaitUntilSystemdReachesMultiUserSystem(name, args)
+				err = createContainerWithWaitUntilSystemdReachesMultiUserSystem(name, args)
+				if err == nil {
+					err = connectExtraNetworks(node, name)
+				}
+				return err
 			})
 		default:
 			return nil, errors.Errorf("unknown node role: %q", node.Role)
 		}
 	}
 	return createContainerFuncs, nil
+}
+
+func connectExtraNetworks(node *config.Node, name string) error {
+	for i, network := range node.Networks {
+		if i == 0 {
+			// First network is already handled in the docker run.
+			continue
+		}
+		if err := exec.Command("docker", "network", "connect", network, name).Run(); err != nil {
+			return errors.Wrap(err, "docker network connect error")
+		}
+	}
+	return nil
+}
+
+func clusterIsIPv6(cfg *config.Cluster) bool {
+	return cfg.Networking.IPFamily == config.IPv6Family || cfg.Networking.IPFamily == config.DualStackFamily
+}
+
+func clusterHasImplicitLoadBalancer(cfg *config.Cluster) bool {
+	controlPlanes := 0
+	for _, configNode := range cfg.Nodes {
+		role := string(configNode.Role)
+		if role == constants.ControlPlaneNodeRoleValue {
+			controlPlanes++
+		}
+	}
+	return controlPlanes > 1
 }
 
 // commonArgs computes static arguments that apply to all containers
@@ -219,6 +256,10 @@ func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, n
 		return nil, err
 	}
 	args = append(args, mappingArgs...)
+
+	if len(node.Networks) > 0 {
+		args = append(args, "--network", node.Networks[0])
+	}
 
 	switch node.Role {
 	case config.ControlPlaneRole:
