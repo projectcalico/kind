@@ -107,6 +107,9 @@ type Node struct {
 	// KubeadmConfigPatchesJSON6902 are applied to the generated kubeadm config
 	// as patchesJson6902 to `kustomize build`
 	KubeadmConfigPatchesJSON6902 []PatchJSON6902
+
+	// Docker networks to attach to.  Defaults to the Docker default ("bridge").
+	Networks []string
 }
 
 // NodeRole defines possible role for nodes in a Kubernetes cluster managed by `kind`
