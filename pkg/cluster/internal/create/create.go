@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/kind/pkg/cluster/internal/create/actions/kubeadminit"
 	"sigs.k8s.io/kind/pkg/cluster/internal/create/actions/kubeadmjoin"
 	"sigs.k8s.io/kind/pkg/cluster/internal/create/actions/loadbalancer"
+	"sigs.k8s.io/kind/pkg/cluster/internal/create/actions/loopback"
 	"sigs.k8s.io/kind/pkg/cluster/internal/create/actions/waitforready"
 	"sigs.k8s.io/kind/pkg/cluster/internal/kubeconfig"
 )
@@ -104,6 +105,7 @@ func Cluster(logger log.Logger, p providers.Provider, opts *ClusterOptions) erro
 	// TODO(bentheelder): make this controllable from the command line?
 	actionsToRun := []actions.Action{
 		loadbalancer.NewAction(), // setup external loadbalancer
+		loopback.NewAction(),     // add loopback addresses
 		configaction.NewAction(), // setup kubeadm config
 	}
 	if !opts.StopBeforeSettingUpKubernetes {

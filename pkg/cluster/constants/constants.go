@@ -20,6 +20,8 @@ package constants
 // DefaultClusterName is the default cluster Context name
 const DefaultClusterName = "kind"
 
+const NodeLoopbackKey = "io.k8s.sigs.kind.loopback"
+
 /* node role value constants */
 const (
 	// ControlPlaneNodeRoleValue identifies a node that hosts a Kubernetes
