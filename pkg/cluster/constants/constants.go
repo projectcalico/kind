@@ -21,6 +21,7 @@ package constants
 const DefaultClusterName = "kind"
 
 const NodeLoopbackKey = "io.k8s.sigs.kind.loopback"
+const NodeRoutesKey = "io.k8s.sigs.kind.routes"
 
 /* node role value constants */
 const (

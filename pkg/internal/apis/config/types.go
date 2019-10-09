@@ -110,6 +110,8 @@ type Node struct {
 
 	// Loopback IP.
 	Loopback string
+
+	Routes []string
 }
 
 // NodeRole defines possible role for nodes in a Kubernetes cluster managed by `kind`
