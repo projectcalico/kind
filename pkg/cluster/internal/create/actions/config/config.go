@@ -20,12 +20,14 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"strings"
 
 	"sigs.k8s.io/kind/pkg/cluster/constants"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
 	"sigs.k8s.io/kind/pkg/errors"
+	"sigs.k8s.io/kind/pkg/exec"
 
 	"sigs.k8s.io/kind/pkg/cluster/internal/create/actions"
 	"sigs.k8s.io/kind/pkg/cluster/internal/kubeadm"
@@ -42,6 +44,8 @@ type Action struct{}
 func NewAction() actions.Action {
 	return &Action{}
 }
+
+var hosts map[string]string
 
 // Execute runs the action
 func (a *Action) Execute(ctx *actions.ActionContext) error {
@@ -77,6 +81,8 @@ func (a *Action) Execute(ctx *actions.ActionContext) error {
 		FeatureGates:         ctx.Config.FeatureGates,
 		RuntimeConfig:        ctx.Config.RuntimeConfig,
 	}
+
+	hosts = map[string]string{}
 
 	kubeadmConfigPlusPatches := func(node nodes.Node, data kubeadm.ConfigData) func() error {
 		return func() error {
@@ -122,6 +128,25 @@ func (a *Action) Execute(ctx *actions.ActionContext) error {
 	// Create the kubeadm config in all nodes concurrently
 	if err := errors.UntilErrorConcurrent(fns); err != nil {
 		return err
+	}
+
+	hostData := ""
+	for name, ip := range hosts {
+		hostData = hostData + ip + " " + name + "\n"
+	}
+	fmt.Printf("hostData = \n%v\n", hostData)
+	for _, nodeName := range []string{"kind-control-plane", "kind-worker", "kind-worker2", "kind-worker3"} {
+		// docker exec NODE cat >> /etc/hosts <<< hostData
+		err := exec.RunWithStdinWriter(
+			exec.Command("docker", "exec", "-i", nodeName, "bash", "-c", "cat >> /etc/hosts"),
+			func(pipe io.Writer) error {
+				_, err := pipe.Write([]byte(hostData))
+				return err
+			},
+		)
+		if err != nil {
+			fmt.Printf("ERROR: %v\n", err)
+		}
 	}
 
 	// if we have containerd config, patch all the nodes concurrently
@@ -200,6 +225,8 @@ func getKubeadmConfig(cfg *config.Cluster, data kubeadm.ConfigData, node nodes.N
 	}
 
 	data.NodeAddress = nodeAddress
+	hosts[data.NodeName] = data.NodeAddress
+
 	// configure the right protocol addresses
 	if cfg.Networking.IPFamily == "ipv6" {
 		if ip := net.ParseIP(nodeAddressIPv6); ip.To16() == nil {
