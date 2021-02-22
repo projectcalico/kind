@@ -110,7 +110,11 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 				if err != nil {
 					return err
 				}
-				return common.RunContainer("docker", name, args, common.WithWaitUntilSystemdReachesMultiUserSystem())
+				err = common.RunContainer("docker", name, args, common.WithWaitUntilSystemdReachesMultiUserSystem())
+				if err == nil {
+					err = connectExtraNetworks(node, name)
+				}
+				return err
 			})
 		case config.WorkerRole:
 			createContainerFuncs = append(createContainerFuncs, func() error {
@@ -118,13 +122,30 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 				if err != nil {
 					return err
 				}
-				return common.RunContainer("docker", name, args, common.WithWaitUntilSystemdReachesMultiUserSystem())
+				err = common.RunContainer("docker", name, args, common.WithWaitUntilSystemdReachesMultiUserSystem())
+				if err == nil {
+					err = connectExtraNetworks(node, name)
+				}
+				return err
 			})
 		default:
 			return nil, errors.Errorf("unknown node role: %q", node.Role)
 		}
 	}
 	return createContainerFuncs, nil
+}
+
+func connectExtraNetworks(node *config.Node, name string) error {
+	for i, network := range node.Networks {
+		if i == 0 {
+			// First network is already handled in the docker run.
+			continue
+		}
+		if err := exec.Command("docker", "network", "connect", network, name).Run(); err != nil {
+			return errors.Wrap(err, "docker network connect error")
+		}
+	}
+	return nil
 }
 
 func clusterIsIPv6(cfg *config.Cluster) bool {
@@ -250,6 +271,22 @@ func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, n
 		return nil, err
 	}
 	args = append(args, mappingArgs...)
+
+	fmt.Printf("networks = %v\n", node.Networks)
+	if len(node.Networks) > 0 {
+		updated := false
+		for i := range args {
+			if args[i] == "--net" || args[i] == "--network" {
+				args[i+1] = node.Networks[0]
+				updated = true
+				break
+			}
+		}
+		if !updated {
+			args = append(args, "--net", node.Networks[0])
+		}
+	}
+	fmt.Printf("args = %v\n", args)
 
 	switch node.Role {
 	case config.ControlPlaneRole:
