@@ -51,6 +51,14 @@ func (n *node) Role() (string, error) {
 }
 
 func (n *node) IP() (ipv4 string, ipv6 string, err error) {
+	// Give the node a chance to indicate its own canonical IPs.
+	output, err := exec.Output(exec.Command("docker", "exec", n.name, "/get-ips.sh"))
+	if err == nil {
+		ips := strings.Split(strings.TrimSpace(string(output)), " ")
+		fmt.Printf("Node %v provided IPs: %v\n", n.name, ips)
+		return ips[0], ips[1], nil
+	}
+
 	// retrieve the IP address of the node using docker inspect
 	cmd := exec.Command("docker", "inspect",
 		"-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}},{{.GlobalIPv6Address}}{{end}}",
