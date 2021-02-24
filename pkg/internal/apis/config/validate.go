@@ -63,8 +63,8 @@ func (c *Cluster) Validate() error {
 	}
 
 	// KubeProxyMode should be iptables or ipvs
-	if c.Networking.KubeProxyMode != IPTablesProxyMode && c.Networking.KubeProxyMode != IPVSProxyMode &&
-		c.Networking.KubeProxyMode != NoneProxyMode {
+	if c.Networking.KubeProxyMode != IPTablesMode && c.Networking.KubeProxyMode != IPVSMode &&
+		c.Networking.KubeProxyMode != NoneMode {
 		errs = append(errs, errors.Errorf("invalid kubeProxyMode: %s", c.Networking.KubeProxyMode))
 	}
 
