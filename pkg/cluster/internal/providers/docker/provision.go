@@ -278,7 +278,17 @@ func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, n
 	args = append(args, mappingArgs...)
 
 	if len(node.Networks) > 0 {
-		args = append(args, "--network", node.Networks[0])
+		updated := false
+		for i := range args {
+			if args[i] == "--net" || args[i] == "--network" {
+				args[i+1] = node.Networks[0]
+				updated = true
+				break
+			}
+		}
+		if !updated {
+			args = append(args, "--net", node.Networks[0])
+		}
 	}
 
 	// finally, specify the image to run
