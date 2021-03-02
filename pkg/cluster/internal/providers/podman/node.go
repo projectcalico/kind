@@ -50,6 +50,14 @@ func (n *node) Role() (string, error) {
 	return lines[0], nil
 }
 
+func (n *node) Loopback() (string, error) {
+	return "", errors.New("unimplemented")
+}
+
+func (n *node) Routes() (string, error) {
+	return "", errors.New("unimplemented")
+}
+
 func (n *node) IP() (ipv4 string, ipv6 string, err error) {
 	// retrieve the IP address of the node using podman inspect
 	cmd := exec.Command("podman", "inspect",

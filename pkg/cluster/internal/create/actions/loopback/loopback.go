@@ -19,9 +19,10 @@ package loopback
 
 import (
 	"fmt"
-	"sigs.k8s.io/kind/pkg/errors"
-	"sigs.k8s.io/kind/pkg/internal/cluster/create/actions"
 	"strings"
+
+	"sigs.k8s.io/kind/pkg/cluster/internal/create/actions"
+	"sigs.k8s.io/kind/pkg/errors"
 )
 
 // kubeadmInitAction implements action for executing the kubadm init

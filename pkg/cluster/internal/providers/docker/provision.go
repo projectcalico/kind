@@ -244,8 +244,8 @@ func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, n
 		"--name", name, // ... and set the container name
 		// label the node with the role ID
 		"--label", fmt.Sprintf("%s=%s", nodeRoleLabelKey, node.Role),
-		"--label", fmt.Sprintf("%s=%s", constants.NodeLoopbackKey, node.Loopback),
-		"--label", fmt.Sprintf("%s=%s", constants.NodeRoutesKey, strings.Join(node.Routes, ",")),
+		"--label", fmt.Sprintf("%s=%s", nodeLoopbackKey, node.Loopback),
+		"--label", fmt.Sprintf("%s=%s", nodeRoutesKey, strings.Join(node.Routes, ",")),
 		// running containers in a container requires privileged
 		// NOTE: we could try to replicate this with --cap-add, and use less
 		// privileges, but this flag also changes some mounts that are necessary

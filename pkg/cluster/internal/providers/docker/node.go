@@ -52,7 +52,7 @@ func (n *node) Role() (string, error) {
 
 func (n *node) Loopback() (string, error) {
 	cmd := exec.Command("docker", "inspect",
-		"--format", fmt.Sprintf(`{{ index .Config.Labels "%s"}}`, constants.NodeLoopbackKey),
+		"--format", fmt.Sprintf(`{{ index .Config.Labels "%s"}}`, nodeLoopbackKey),
 		n.name,
 	)
 	lines, err := exec.OutputLines(cmd)
@@ -67,7 +67,7 @@ func (n *node) Loopback() (string, error) {
 
 func (n *node) Routes() (string, error) {
 	cmd := exec.Command("docker", "inspect",
-		"--format", fmt.Sprintf(`{{ index .Config.Labels "%s"}}`, constants.NodeRoutesKey),
+		"--format", fmt.Sprintf(`{{ index .Config.Labels "%s"}}`, nodeRoutesKey),
 		n.name,
 	)
 	lines, err := exec.OutputLines(cmd)
