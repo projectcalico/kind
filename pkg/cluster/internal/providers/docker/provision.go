@@ -110,11 +110,19 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 				if err != nil {
 					return err
 				}
+				err = connectExtraNetworks(node, name)
+				if err != nil {
+					return err
+				}
 				return common.RunContainer("docker", name, args, common.WithWaitUntilSystemdReachesMultiUserSystem())
 			})
 		case config.WorkerRole:
 			createContainerFuncs = append(createContainerFuncs, func() error {
 				args, err := runArgsForNode(node, cfg.Networking.IPFamily, name, genericArgs)
+				if err != nil {
+					return err
+				}
+				err = connectExtraNetworks(node, name)
 				if err != nil {
 					return err
 				}
@@ -125,6 +133,19 @@ func planCreation(cfg *config.Cluster, networkName string) (createContainerFuncs
 		}
 	}
 	return createContainerFuncs, nil
+}
+
+func connectExtraNetworks(node *config.Node, name string) error {
+	for i, network := range node.Networks {
+		if i == 0 {
+			// First network is already handled in the docker run.
+			continue
+		}
+		if err := exec.Command("docker", "network", "connect", network, name).Run(); err != nil {
+			return errors.Wrap(err, "docker network connect error")
+		}
+	}
+	return nil
 }
 
 func clusterIsIPv6(cfg *config.Cluster) bool {
@@ -213,8 +234,10 @@ func commonArgs(cluster string, cfg *config.Cluster, networkName string, nodeNam
 func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, name string, args []string) ([]string, error) {
 	args = append([]string{
 		"--hostname", name, // make hostname match container name
-		// label the node with the role ID
+		// label the node with the role ID and loopback
 		"--label", fmt.Sprintf("%s=%s", nodeRoleLabelKey, node.Role),
+		"--label", fmt.Sprintf("%s=%s", constants.NodeLoopbackKey, node.Loopback),
+		"--label", fmt.Sprintf("%s=%s", constants.NodeRoutesKey, strings.Join(node.Routes, ",")),
 		// running containers in a container requires privileged
 		// NOTE: we could try to replicate this with --cap-add, and use less
 		// privileges, but this flag also changes some mounts that are necessary
@@ -254,6 +277,10 @@ func runArgsForNode(node *config.Node, clusterIPFamily config.ClusterIPFamily, n
 	switch node.Role {
 	case config.ControlPlaneRole:
 		args = append(args, "-e", "KUBECONFIG=/etc/kubernetes/admin.conf")
+	}
+
+	if len(node.Networks) > 0 {
+		args = append(args, "--network", node.Networks[0])
 	}
 
 	// finally, specify the image to run

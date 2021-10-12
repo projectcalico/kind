@@ -22,6 +22,7 @@ import (
 	"io"
 	"strings"
 
+	"sigs.k8s.io/kind/pkg/cluster/constants"
 	"sigs.k8s.io/kind/pkg/errors"
 	"sigs.k8s.io/kind/pkg/exec"
 )
@@ -56,18 +57,64 @@ func (n *node) IP() (ipv4 string, ipv6 string, err error) {
 		"-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}},{{.GlobalIPv6Address}}{{end}}",
 		n.name, // ... against the "node" container
 	)
-	lines, err := exec.OutputLines(cmd)
+	lines, err := exec.CombinedOutputLines(cmd)
 	if err != nil {
 		return "", "", errors.Wrap(err, "failed to get container details")
 	}
 	if len(lines) != 1 {
 		return "", "", errors.Errorf("file should only be one line, got %d lines", len(lines))
 	}
-	ips := strings.Split(lines[0], ",")
-	if len(ips) != 2 {
-		return "", "", errors.Errorf("container addresses should have 2 values, got %d values", len(ips))
+	// If the node has a loopback address, that provides the IPv4.
+	loopAddr, err := n.Loopback()
+	if err == nil && loopAddr != "" {
+		fmt.Printf("%v: use IPv4 loopback address %v\n", n.name, loopAddr)
+		ipv4 = loopAddr
 	}
-	return ips[0], ips[1], nil
+	ips := strings.Split(lines[0], ",")
+	for _, ip := range ips {
+		if strings.Contains(ip, ":") {
+			// IPv6.
+			if ipv6 == "" {
+				ipv6 = ip
+			}
+		} else {
+			// IPv4
+			if ipv4 == "" {
+				ipv4 = ip
+			}
+		}
+	}
+	return
+}
+
+func (n *node) Loopback() (string, error) {
+	cmd := exec.Command("docker", "inspect",
+		"--format", fmt.Sprintf(`{{ index .Config.Labels "%s"}}`, constants.NodeLoopbackKey),
+		n.name,
+	)
+	lines, err := exec.OutputLines(cmd)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get role for node")
+	}
+	if len(lines) != 1 {
+		return "", errors.Errorf("failed to get role for node: output lines %d != 1", len(lines))
+	}
+	return lines[0], nil
+}
+
+func (n *node) Routes() (string, error) {
+	cmd := exec.Command("docker", "inspect",
+		"--format", fmt.Sprintf(`{{ index .Config.Labels "%s"}}`, constants.NodeRoutesKey),
+		n.name,
+	)
+	lines, err := exec.OutputLines(cmd)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get routes for node")
+	}
+	if len(lines) != 1 {
+		return "", errors.Errorf("failed to get routes for node: output lines %d != 1", len(lines))
+	}
+	return lines[0], nil
 }
 
 func (n *node) Command(command string, args ...string) exec.Cmd {

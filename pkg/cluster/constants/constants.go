@@ -46,4 +46,7 @@ const (
 	// Please note that `kind` nodes hosting external etcd are not
 	// kubernetes nodes
 	ExternalEtcdNodeRoleValue string = "external-etcd"
+
+	NodeLoopbackKey string = "io.k8s.sigs.kind.loopback"
+	NodeRoutesKey   string = "io.k8s.sigs.kind.routes"
 )
