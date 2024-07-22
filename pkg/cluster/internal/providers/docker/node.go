@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 
 	"sigs.k8s.io/kind/pkg/errors"
@@ -53,9 +54,12 @@ func (n *node) Role() (string, error) {
 func (n *node) IP() (ipv4 string, ipv6 string, err error) {
 	// Give the node a chance to indicate its own canonical IPs.
 	output, err := exec.Output(exec.Command("docker", "exec", n.name, "/get-ips.sh"))
-	if err == nil {
-		ips := strings.Split(strings.TrimSpace(string(output)), " ")
-		fmt.Printf("Node %v provided IPs: %v\n", n.name, ips)
+	if err != nil {
+		return "", "", errors.Wrap(err, fmt.Sprintf("get-ips.sh failed. Output: %s", output))
+	}
+
+	ips := strings.Split(strings.TrimSpace(string(output)), " ")
+	if net.ParseIP(ips[0]) != nil && net.ParseIP(ips[1]) != nil {
 		return ips[0], ips[1], nil
 	}
 
@@ -71,7 +75,7 @@ func (n *node) IP() (ipv4 string, ipv6 string, err error) {
 	if len(lines) != 1 {
 		return "", "", errors.Errorf("file should only be one line, got %d lines", len(lines))
 	}
-	ips := strings.Split(lines[0], ",")
+	ips = strings.Split(lines[0], ",")
 	if len(ips) != 2 {
 		return "", "", errors.Errorf("container addresses should have 2 values, got %d values", len(ips))
 	}
