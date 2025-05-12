@@ -1,3 +1,10 @@
+# NOTE!
+This is a fork of [kubernetes-sigs/kind](github.com/kubernetes-sigs/kind).
+It's sole intended use is for internal testing.
+
+This branch is based off kind v0.22.0, and has additional experimental patches from the projectcalico team.
+
+
 <p align="center"><img alt="kind" src="./logo/logo.png" width="300px" /></p>
 
 # Please see [Our Documentation](https://kind.sigs.k8s.io/docs/user/quick-start/) for more in-depth installation etc.
